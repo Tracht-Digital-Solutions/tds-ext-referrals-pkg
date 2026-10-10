@@ -1,0 +1,10 @@
+---
+// Empfehlungsprogramm settings — terms of the programme, persisted to the core
+// settings store (/admin/settings/referrals).
+import ReferralsSettings from "./ReferralsSettings.tsx";
+// HYDRATION: `client:visible` — /einstellungen stacks many panels below the fold.
+---
+
+<div class="tds-settings-section__body">
+  <ReferralsSettings client:visible />
+</div>

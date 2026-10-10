@@ -1,0 +1,24 @@
+---
+// Empfehlungen: one route, two products. The admin panel manages partners,
+// commissions and payouts; the customer portal is the partner's own view.
+import ReferralsAdmin from "../islands/ReferralsAdmin.tsx";
+import ReferralsPortal from "../islands/ReferralsPortal.tsx";
+
+const portal = (import.meta.env.PUBLIC_FRONTEND_TARGET as string | undefined) === "customer";
+---
+<section class="tds-page">
+  <div class="tds-page__head">
+    <h1 class="tds-page__title">{portal ? "Weiterempfehlen" : "Provisionen"}</h1>
+  </div>
+  {portal ? (
+    <>
+      <p class="tds-page__lede">Empfehlen Sie uns weiter. Für jeden bezahlten Auftrag, den Sie vermitteln, erhalten Sie eine Provision.</p>
+      <ReferralsPortal client:load />
+    </>
+  ) : (
+    <>
+      <p class="tds-page__lede">Partner verwalten, Vermittlungen prüfen und Provisionen auszahlen.</p>
+      <ReferralsAdmin client:load />
+    </>
+  )}
+</section>
