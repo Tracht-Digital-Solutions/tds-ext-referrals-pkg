@@ -1,6 +1,6 @@
 {
   "name": "@tracht-digital-solutions/tds-ext-referrals",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Empfehlungsprogramm: Partner, Provisionen und Auszahlungen — Admin-Verwaltung und Portal-Ansicht \"Weiterempfehlen\", plus PHP Module.",
   "license": "UNLICENSED",
   "private": false,
