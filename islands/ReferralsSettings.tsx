@@ -1,13 +1,6 @@
 import { useEffect, useState } from "react";
-import { Spinner, toast } from "@tracht-digital-solutions/tds-shared/components";
-import { apiFetch } from "@tracht-digital-solutions/tds-shared/api";
-
-interface Masked {
-  key: string;
-  value?: string;
-}
-
-const NS = "/admin/settings/referrals";
+import { Alert, Spinner } from "@tracht-digital-solutions/tds-shared/components";
+import { useRuntimeSettings } from "@tracht-digital-solutions/tds-shared/admin";
 
 const FIELDS = [
   { key: "default_rate_percent", label: "Standard-Provision (% vom Netto)", placeholder: "10", inputMode: "decimal" as const },
@@ -19,52 +12,16 @@ const FIELDS = [
 
 /** The programme's terms, in the core settings store (admin only). Empty = default. */
 export default function ReferralsSettings() {
-  const [values, setValues] = useState<Record<string, string> | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const load = async () => {
-    const res = await apiFetch(NS).catch(() => null);
-    if (res === null) {
-      setStatus("Einstellungen konnten nicht geladen werden — die API ist nicht erreichbar.");
-      setValues({});
-      return;
-    }
-    if (!res.ok) {
-      setStatus(res.status === 401 || res.status === 403 ? "Nur für Administratoren." : `Fehler (HTTP ${res.status}).`);
-      setValues({});
-      return;
-    }
-    const d = (await res.json()) as { settings?: Masked[] };
-    setValues(Object.fromEntries((d.settings ?? []).map((s) => [s.key, s.value ?? ""])));
-  };
+  const settings = useRuntimeSettings("referrals");
+  const [values, setValues] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    void load();
-  }, []);
+    setValues(Object.fromEntries(FIELDS.map((f) => [f.key, settings.get(f.key)?.value ?? ""])));
+  }, [settings.settings]);
 
-  const save = async () => {
-    setBusy(true);
-    setStatus(null);
-    const res = await apiFetch(NS, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        settings: FIELDS.map((f) => ({ key: f.key, secret: false, value: (values?.[f.key] ?? "").trim() })),
-      }),
-    }).catch(() => null);
-    setBusy(false);
-    if (res === null) {
-      toast.danger("Speichern fehlgeschlagen — die API ist nicht erreichbar.");
-    } else if (res.ok) {
-      toast.success("Gespeichert.");
-      void load();
-    } else {
-      toast.danger(`Speichern fehlgeschlagen (HTTP ${res.status}).`);
-    }
-  };
+  const save = () => settings.save(FIELDS.map((f) => ({ key: f.key, value: (values[f.key] ?? "").trim() })));
 
-  if (values === null) return <p><Spinner /></p>;
+  if (!settings.loaded) return <p><Spinner /></p>;
 
   return (
     <div className="tds-stack">
@@ -84,9 +41,9 @@ export default function ReferralsSettings() {
           />
         </label>
       ))}
-      {status ? <p className="tds-alert tds-alert--danger" role="alert">{status}</p> : null}
+      <Alert>{settings.error}</Alert>
       <div className="tds-toolbar">
-        <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={busy} aria-busy={busy}>
+        <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={settings.busy} aria-busy={settings.busy}>
           Speichern
         </button>
       </div>

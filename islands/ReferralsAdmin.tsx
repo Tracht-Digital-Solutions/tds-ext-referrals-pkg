@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ConfirmDialog, Spinner, toast } from "@tracht-digital-solutions/tds-shared/components";
+import { Alert, ConfirmDialog, Spinner, toast } from "@tracht-digital-solutions/tds-shared/components";
 import { apiFetch } from "@tracht-digital-solutions/tds-shared/api";
 import {
   TAX,
@@ -17,6 +17,8 @@ import {
   type ProgrammeSettings,
   type TaxStatus,
 } from "./format";
+import { copyText } from "@tracht-digital-solutions/tds-shared/clipboard";
+import { downloadText } from "@tracht-digital-solutions/tds-shared/download";
 
 interface Overview {
   partners: Partner[];
@@ -81,7 +83,7 @@ export default function ReferralsAdmin() {
     return true;
   };
 
-  if (error) return <p className="tds-alert tds-alert--danger" role="alert">{error}</p>;
+  if (error) return <Alert>{error}</Alert>;
   if (data === null) {
     return (
       <p className="tds-empty" aria-busy="true">
@@ -145,12 +147,8 @@ function Commissions({ data, mutate }: { data: Overview; mutate: Mutate }) {
       ]),
     ];
     const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\r\n");
-    const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `provisionen-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // The BOM makes Excel read the file as UTF-8 (umlauts in names).
+    downloadText("﻿" + csv, `provisionen-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv;charset=utf-8");
   };
 
   return (
@@ -377,7 +375,7 @@ function ManualForm({ partners, mutate }: { partners: Partner[]; mutate: Mutate 
         Mit Rechnungs-Nr. wird die Provision fällig, sobald die Rechnung als bezahlt gemeldet ist. Ohne bestätigen Sie die
         Zahlung selbst.
       </p>
-      {problem ? <p className="tds-alert tds-alert--danger" role="alert">{problem}</p> : null}
+      <Alert>{problem}</Alert>
       <div className="tds-toolbar">
         <button type="button" className="btn btn-primary" onClick={() => void submit()} disabled={busy} aria-busy={busy}>
           Erfassen
@@ -472,9 +470,8 @@ function Partners({ data, mutate }: { data: Overview; mutate: Mutate }) {
                     type="button"
                     className="btn btn-ghost"
                     onClick={() =>
-                      void navigator.clipboard.writeText(p.link).then(
-                        () => toast.success("Link kopiert."),
-                        () => toast.danger("Link konnte nicht kopiert werden."),
+                      void copyText(p.link).then((ok) =>
+                        ok ? toast.success("Link kopiert.") : toast.danger("Link konnte nicht kopiert werden."),
                       )
                     }
                   >
@@ -547,7 +544,7 @@ function PartnerForm({ partner, mutate, onDone }: { partner: Partner | null; mut
         <input className="field-boxed" type="text" value={d.code} onChange={(e) => set("code", e.target.value.toUpperCase())} />
       </label>
       {partner && d.code !== partner.code ? (
-        <p className="tds-alert tds-alert--warning" role="status">Ein neuer Code macht bereits geteilte Links ungültig.</p>
+        <Alert tone="warning">Ein neuer Code macht bereits geteilte Links ungültig.</Alert>
       ) : null}
       <label className="tds-field-row">
         <span>Eigener Satz in % (leer = Standard)</span>

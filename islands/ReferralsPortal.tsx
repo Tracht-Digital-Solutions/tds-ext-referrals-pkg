@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Spinner, toast } from "@tracht-digital-solutions/tds-shared/components";
-import { apiFetch } from "@tracht-digital-solutions/tds-shared/api";
+import { Alert, Spinner, toast } from "@tracht-digital-solutions/tds-shared/components";
+import { apiFetch, sendJson } from "@tracht-digital-solutions/tds-shared/api";
 import {
   TAX,
   VIA,
@@ -16,6 +16,7 @@ import {
   type ProgrammeSettings,
   type TaxStatus,
 } from "./format";
+import { copyText } from "@tracht-digital-solutions/tds-shared/clipboard";
 
 interface Me {
   partner: Partner;
@@ -54,7 +55,7 @@ export default function ReferralsPortal() {
     void load();
   }, []);
 
-  if (error) return <p className="tds-alert tds-alert--danger" role="alert">{error}</p>;
+  if (error) return <Alert>{error}</Alert>;
   if (me === null) {
     return (
       <p className="tds-empty" aria-busy="true">
@@ -68,9 +69,9 @@ export default function ReferralsPortal() {
   return (
     <div className="tds-stack tds-stack--loose">
       {partner.status === "paused" ? (
-        <p className="tds-alert tds-alert--warning" role="status">
+        <Alert tone="warning">
           Ihr Partnerkonto ist pausiert. Neue Empfehlungen werden gerade nicht gezählt.
-        </p>
+        </Alert>
       ) : null}
 
       <ShareCard partner={partner} settings={settings} />
@@ -136,12 +137,8 @@ function Figure({ label, value, hint }: { label: string; value: string; hint: st
 
 function ShareCard({ partner, settings }: { partner: Partner; settings: ProgrammeSettings }) {
   const copy = async (text: string, what: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(`${what} kopiert.`);
-    } catch {
-      toast.danger(`${what} konnte nicht kopiert werden. Bitte markieren und von Hand kopieren.`);
-    }
+    if (await copyText(text)) toast.success(`${what} kopiert.`);
+    else toast.danger(`${what} konnte nicht kopiert werden. Bitte markieren und von Hand kopieren.`);
   };
 
   return (
@@ -182,11 +179,7 @@ function PayoutDetails({ partner, onSaved }: { partner: Partner; onSaved: (p: Pa
   const save = async () => {
     setBusy(true);
     setProblem(null);
-    const res = await apiFetch("/referrals/me/payout-details", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ payout_name: name, iban, tax_status: tax, vat_id: vatId }),
-    }).catch(() => null);
+    const res = await sendJson("/referrals/me/payout-details", "PUT", { payout_name: name, iban, tax_status: tax, vat_id: vatId }).catch(() => null);
     setBusy(false);
     if (res === null) {
       toast.danger("Speichern fehlgeschlagen — die API ist nicht erreichbar.");
@@ -240,7 +233,7 @@ function PayoutDetails({ partner, onSaved }: { partner: Partner; onSaved: (p: Pa
           <input className="field-boxed" type="text" value={vatId} onChange={(e) => setVatId(e.target.value)} />
         </label>
       ) : null}
-      {problem ? <p className="tds-alert tds-alert--danger" role="alert">{problem}</p> : null}
+      <Alert>{problem}</Alert>
       <div className="tds-toolbar">
         <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={busy} aria-busy={busy}>
           Speichern

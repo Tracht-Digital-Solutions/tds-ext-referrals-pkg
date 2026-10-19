@@ -1,5 +1,8 @@
 /** Shared formatting and wire types for the Empfehlungen islands. */
 
+import { describeFailureFrom } from "@tracht-digital-solutions/tds-shared/api";
+import { formatCents, formatIsoDay, parseEuros as parseEurosShared } from "@tracht-digital-solutions/tds-shared/format";
+
 export type CommissionStatus = "claimed" | "pending" | "approved" | "paid" | "rejected" | "reversed";
 
 export interface Commission {
@@ -60,22 +63,22 @@ export interface ProgrammeSettings {
   terms_url: string;
 }
 
-export const euros = (cents: number | null) =>
-  cents === null ? "—" : new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
+export const euros = (cents: number | null) => formatCents(cents);
 
 /** `2026-10-07…` → `07.10.2026`, without a time-zone round trip. */
-export const day = (iso: string | null | undefined) => (iso ? iso.slice(0, 10).split("-").reverse().join(".") : "—");
+export const day = (iso: string | null | undefined) => formatIsoDay(iso);
 
 export const percent = (value: number | null) =>
   value === null ? "—" : `${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 }).format(value)} %`;
 
-/** Euro text as typed ("1.250,50", "1250.5") → cents, or null. */
+/**
+ * Euro text as typed ("1.250,50", "1250.5") → cents, or null. A payout or a
+ * manual commission is never zero, so only a positive amount counts; sub-cent
+ * input is rounded to the cent (tds-shared `parseEuros` with `round`).
+ */
 export const parseEuros = (raw: string): number | null => {
-  const s = raw.trim().replace(/\s|€/g, "");
-  if (s === "") return null;
-  const normalized = s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s;
-  const n = Number(normalized);
-  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : null;
+  const cents = parseEurosShared(raw, { round: true });
+  return cents !== null && cents > 0 ? cents : null;
 };
 
 /** Explicit map — never interpolate a chip class (Tailwind cannot extract it). */
@@ -110,13 +113,5 @@ export const waitLabel = (c: Commission) => {
   return c.approve_after ? `Fällig ab ${day(c.approve_after)}` : "Wartet";
 };
 
-/** The API's `{error}` text, or the status. */
-export async function errorText(res: Response, fallback: string): Promise<string> {
-  try {
-    const body = (await res.json()) as { error?: string };
-    if (body.error) return `${body.error} (HTTP ${res.status})`;
-  } catch {
-    // not JSON
-  }
-  return `${fallback} (HTTP ${res.status}).`;
-}
+/** The API's `{error}` text, or the status (tds-shared `describeFailureFrom`). */
+export const errorText = (res: Response, fallback: string): Promise<string> => describeFailureFrom(res, fallback);
